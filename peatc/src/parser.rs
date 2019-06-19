@@ -1,8 +1,14 @@
 
-#[derive(Clone,Copy)]
+#![allow(dead_code)]
+
+use std::cell::Cell;
+use std::rc::Rc;
+use std::fmt::Write;
+
+#[derive(Clone,Copy,PartialEq)]
 pub enum Symbol {
-    Terminal, Item, Plus, Minus, Ast, Slash, Circumflex, Amp, Vert,
-    Assignment, Eq, Ne, Not, Qm,
+    Terminal, Item, Add, Sub, Mul, Div, Neg, Circumflex, Amp, Vert,
+    Assignment, Eq, Ne, Not, Qm, PathSep,
     Dot, Comma, Colon, Semicolon,
     LeftParen, RightParen,
     LeftBracket, RightBracket,
@@ -13,11 +19,69 @@ pub enum Symbol {
     Else, Enum, False, Fn, For, If, In, Let, Loop,
     Match, Mod, Mut,
     Or, Pub, Return, Struct, Trait, True, Type,
-    Use, Where, While,
+    Use, Where, While
+}
+
+impl Symbol {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Symbol::Terminal => "Terminal",
+            Symbol::Item => "Item",
+            Symbol::Add => "+",
+            Symbol::Sub => "-",
+            Symbol::Mul => "*",
+            Symbol::Div => "/",
+            Symbol::Neg => "-",
+            Symbol::Circumflex => "^",
+            Symbol::Amp => "&",
+            Symbol::Vert => "|",
+            Symbol::Assignment => "=",
+            Symbol::Eq => "==",
+            Symbol::Ne => "!=",
+            Symbol::Not => "not",
+            Symbol::Qm => "?",
+            Symbol::Dot => ".",
+            Symbol::Comma => ",",
+            Symbol::Colon => ":",
+            Symbol::Semicolon => ";",
+            Symbol::PathSep => "::",
+            Symbol::LeftParen => "(",
+            Symbol::RightParen => ")",
+            Symbol::LeftBracket => "[",
+            Symbol::RightBracket => "]",
+            Symbol::LeftBrace => "{",
+            Symbol::RightBrace => "}",
+            Symbol::And => "and",
+            Symbol::Break => "break",
+            Symbol::Continue => "continue",
+            Symbol::Else => "else",
+            Symbol::Enum => "enum",
+            Symbol::False => "false",
+            Symbol::Fn => "fn",
+            Symbol::For => "for",
+            Symbol::If => "if",
+            Symbol::In => "in",
+            Symbol::Let => "let",
+            Symbol::Loop => "loop",
+            Symbol::Match => "match",
+            Symbol::Mod => "mod",
+            Symbol::Mut => "mut",
+            Symbol::Or => "or",
+            Symbol::Pub => "pub",
+            Symbol::Return => "return",
+            Symbol::Struct => "struct",
+            Symbol::Trait => "trait",
+            Symbol::True => "true",
+            Symbol::Type => "type",
+            Symbol::Use => "use",
+            Symbol::Where => "where",
+            Symbol::While => "while"
+        }
+    }
 }
 
 pub enum Item {
-    None, Int(u64), Id(String),
+    None, Int(u64), Id(String)
 }
 
 #[allow(dead_code)]
@@ -37,7 +101,7 @@ impl Token {
 pub struct SyntaxErrorStruct {
     pub line: u32,
     pub col: u32,
-    pub text: String,
+    pub text: String
 }
 
 type SyntaxError = Box<SyntaxErrorStruct>;
@@ -74,7 +138,7 @@ static KEYWORDS: &'static [KeywordsElement] = &[
     ("type",    &Symbol::Type),
     ("use",     &Symbol::Use),
     ("where",   &Symbol::Where),
-    ("while",   &Symbol::While),
+    ("while",   &Symbol::While)
 ];
 
 fn is_keyword(id: &String) -> Option<&'static KeywordsElement> {
@@ -95,60 +159,11 @@ fn item_to_string(buffer: &mut String, item: &Item) {
 }
 
 fn token_to_string(buffer: &mut String, t: &Token) {
-    buffer.push_str(match t.symbol {
-        Symbol::Terminal => "Terminal",
-        Symbol::Item => {
-            item_to_string(buffer,&t.item);
-            return;
-        },
-        Symbol::Plus => "+",
-        Symbol::Minus => "-",
-        Symbol::Ast => "*",
-        Symbol::Slash => "/",
-        Symbol::Circumflex => "^",
-        Symbol::Amp => "&",
-        Symbol::Vert => "|",
-        Symbol::Assignment => "=",
-        Symbol::Eq => "==",
-        Symbol::Ne => "!=",
-        Symbol::Not => "not",
-        Symbol::Qm => "?",
-        Symbol::Dot => ".",
-        Symbol::Comma => ",",
-        Symbol::Colon => ":",
-        Symbol::Semicolon => ";",
-        Symbol::LeftParen => "(",
-        Symbol::RightParen => ")",
-        Symbol::LeftBracket => "[",
-        Symbol::RightBracket => "]",
-        Symbol::LeftBrace => "{",
-        Symbol::RightBrace => "}",
-        Symbol::And => "and",
-        Symbol::Break => "break",
-        Symbol::Continue => "continue",
-        Symbol::Else => "else",
-        Symbol::Enum => "enum",
-        Symbol::False => "false",
-        Symbol::Fn => "fn",
-        Symbol::For => "for",
-        Symbol::If => "if",
-        Symbol::In => "in",
-        Symbol::Let => "let",
-        Symbol::Loop => "loop",
-        Symbol::Match => "match",
-        Symbol::Mod => "mod",
-        Symbol::Mut => "mut",
-        Symbol::Or => "or",
-        Symbol::Pub => "pub",
-        Symbol::Return => "return",
-        Symbol::Struct => "struct",
-        Symbol::Trait => "trait",
-        Symbol::True => "true",
-        Symbol::Type => "type",
-        Symbol::Use => "use",
-        Symbol::Where => "where",
-        Symbol::While => "while",
-    })
+    if let Symbol::Item = t.symbol {
+        item_to_string(buffer,&t.item);
+    }else{
+        buffer.push_str(t.symbol.as_str());
+    }
 }
 
 #[allow(dead_code)]
@@ -227,23 +242,28 @@ pub fn scan(input: &str) -> Result<Vec<Token>,SyntaxError> {
                     i+=1; col+=1;
                 },
                 ':' => {
-                    v.push(Token::symbol(line,col,Symbol::Colon));
-                    i+=1; col+=1;
+                    if i+1<n && a[i+1]==':' {
+                        v.push(Token::symbol(line,col,Symbol::PathSep));
+                        i+=1; col+=1;
+                    }else{
+                        v.push(Token::symbol(line,col,Symbol::Colon));
+                        i+=1; col+=1;
+                    }
                 },
                 ';' => {
                     v.push(Token::symbol(line,col,Symbol::Semicolon));
                     i+=1; col+=1;
                 },
                 '+' => {
-                    v.push(Token::symbol(line,col,Symbol::Plus));
+                    v.push(Token::symbol(line,col,Symbol::Add));
                     i+=1; col+=1;
                 },
                 '-' => {
-                    v.push(Token::symbol(line,col,Symbol::Minus));
+                    v.push(Token::symbol(line,col,Symbol::Sub));
                     i+=1; col+=1;
                 },
                 '*' => {
-                    v.push(Token::symbol(line,col,Symbol::Ast));
+                    v.push(Token::symbol(line,col,Symbol::Mul));
                     i+=1; col+=1;
                 },
                 '/' => {
@@ -259,7 +279,7 @@ pub fn scan(input: &str) -> Result<Vec<Token>,SyntaxError> {
                         }
                         i+=2; col+=2;
                     }else{
-                        v.push(Token::symbol(line,col,Symbol::Slash));
+                        v.push(Token::symbol(line,col,Symbol::Div));
                         i+=1; col+=1;
                     }
                 },
@@ -333,3 +353,149 @@ pub fn scan(input: &str) -> Result<Vec<Token>,SyntaxError> {
     return Ok(v);
 }
 
+
+struct TokenIterator<'a> {
+    a: &'a [Token],
+    index: Cell<usize>
+}
+
+impl<'a> TokenIterator<'a> {
+    fn new(a: &'a [Token]) -> TokenIterator<'a> {
+        TokenIterator{a: a, index: Cell::new(0)}
+    }
+    fn get(&self) -> &Token {
+        return &self.a[self.index.get()];
+    }
+    fn advance(&self) {
+        self.index.set(self.index.get()+1);
+    }
+}
+
+pub enum NodeKind {
+    Id(String),
+    UnOp(Symbol,Rc<AST>),
+    BinOp(Symbol,Rc<AST>,Rc<AST>)
+}
+
+pub struct AST {
+    pub line: u32,
+    pub col: u32,
+    pub kind: NodeKind
+}
+
+impl AST {
+    fn node(line: u32, col: u32, kind: NodeKind) -> Rc<AST> {
+        Rc::new(AST{line,col,kind})
+    }
+}
+
+const INDENT_SHIFT: usize = 4;
+
+fn ast_to_string(buffer: &mut String, t: &AST, indent: usize) {
+    let _ = write!(buffer,"{: <1$}","",indent);
+    match &t.kind {
+        NodeKind::Id(s) => {
+            let _ = write!(buffer,"{}\n",s);
+        },
+        NodeKind::UnOp(op,x) => {
+            let _ = write!(buffer,"{}\n",op.as_str());
+            ast_to_string(buffer,x,indent+INDENT_SHIFT);            
+        },
+        NodeKind::BinOp(op,x,y) => {
+            let _ = write!(buffer,"{}\n",op.as_str());
+            ast_to_string(buffer,x,indent+INDENT_SHIFT);
+            ast_to_string(buffer,y,indent+INDENT_SHIFT);
+        }
+    }
+}
+
+impl std::fmt::Display for AST {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut buffer = String::new();
+        ast_to_string(&mut buffer,self,INDENT_SHIFT);
+        return write!(f,"{}",buffer);
+    }
+}
+
+struct Parser{}
+
+impl Parser {
+
+fn identifier(&mut self, i: &TokenIterator)
+-> Result<Rc<AST>,SyntaxError>
+{
+    let t = i.get();
+    if let Item::Id(ref id) = t.item {
+        i.advance();
+        return Ok(AST::node(t.line,t.col,NodeKind::Id(id.clone())));
+    }else{
+        return Err(syntax_error(t.line,t.col,
+            String::from("expected identifer.")
+        ));
+    }
+}
+
+fn negation(&mut self, i: &TokenIterator)
+-> Result<Rc<AST>,SyntaxError>
+{
+    let t = i.get();
+    if t.symbol == Symbol::Sub {
+        i.advance();
+        let x = self.identifier(i)?;
+        return Ok(AST::node(t.line,t.col,NodeKind::UnOp(Symbol::Neg,x)));
+    }else{
+        return self.identifier(i);
+    }
+}
+
+fn multiplication(&mut self, i: &TokenIterator)
+-> Result<Rc<AST>,SyntaxError>
+{
+    let mut x = self.negation(i)?;
+    loop{
+        let t = i.get();
+        if t.symbol == Symbol::Mul  || t.symbol == Symbol::Div ||
+           t.symbol == Symbol::Mod
+        {
+            i.advance();
+            let y = self.negation(i)?;
+            x = AST::node(t.line,t.col,NodeKind::BinOp(t.symbol,x,y));
+        }else{
+            return Ok(x);
+        }
+    }
+}
+
+fn addition(&mut self, i: &TokenIterator)
+-> Result<Rc<AST>,SyntaxError>
+{
+    let mut x = self.multiplication(i)?;
+    loop{
+        let t = i.get();
+        if t.symbol == Symbol::Add || t.symbol == Symbol::Sub {
+            i.advance();
+            let y = self.multiplication(i)?;
+            x = AST::node(t.line,t.col,NodeKind::BinOp(t.symbol,x,y));
+        }else{
+            return Ok(x);
+        }
+    }
+}
+
+fn expression(&mut self, i: &TokenIterator)
+-> Result<Rc<AST>,SyntaxError>
+{
+    return self.addition(i);
+}
+
+}
+
+pub fn parse(s: &str) -> Result<Rc<AST>,SyntaxError> {
+    let v = scan(s)?;
+    print_vec_token(&v);
+    let i = TokenIterator::new(&v);
+    let mut parser = Parser{};
+    let x = parser.expression(&i)?;
+    println!("{}",x);
+    return Ok(x);
+}

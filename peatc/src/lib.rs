@@ -13,12 +13,11 @@ pub fn read_file(path: &str) -> Result<String,io::Error> {
 }
 
 pub fn compile(input: &str) {
-    let v = match parser::scan(input) {
+    let _t = match parser::parse(input) {
         Ok(value) => value,
         Err(e) => {
             println!("{}",e.text);
             return;
         }
     };
-    parser::print_vec_token(&v);
 }
