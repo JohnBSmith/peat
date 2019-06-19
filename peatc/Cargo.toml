@@ -1,0 +1,22 @@
+[package]
+name = "peatc"
+version = "0.0.1"
+authors = ["Finn <finn.bcd@gmail.com>"]
+license = "CC0-1.0"
+edition = "2018"
+
+description = "Peat compiler"
+keywords = ["scripting", "language"]
+repository = "https://github.com/JohnBSmith/peat"
+readme = "README.md"
+
+[lib]
+name = "libpeatc"
+path = "src/lib.rs"
+
+[[bin]]
+name = "peatc"
+path = "src/main.rs"
+doc = false
+
+[dependencies]

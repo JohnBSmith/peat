@@ -1,0 +1,4 @@
+/peat/target
+/peatc/target
+/peatc/Cargo.lock
+**/*.rs.bk
