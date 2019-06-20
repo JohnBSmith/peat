@@ -374,18 +374,22 @@ impl<'a> TokenIterator<'a> {
 pub enum NodeKind {
     Id(String),
     UnOp(Symbol,Rc<AST>),
-    BinOp(Symbol,Rc<AST>,Rc<AST>)
+    BinOp(Symbol,Rc<AST>,Rc<AST>),
+    Block(Box<[Rc<AST>]>)
 }
+
+const SEMANTICS_NONE: u32 = 0;
 
 pub struct AST {
     pub line: u32,
     pub col: u32,
+    pub index: u32,
     pub kind: NodeKind
 }
 
 impl AST {
     fn node(line: u32, col: u32, kind: NodeKind) -> Rc<AST> {
-        Rc::new(AST{line,col,kind})
+        Rc::new(AST{line, col, index: SEMANTICS_NONE, kind})
     }
 }
 
@@ -405,6 +409,12 @@ fn ast_to_string(buffer: &mut String, t: &AST, indent: usize) {
             let _ = write!(buffer,"{}\n",op.as_str());
             ast_to_string(buffer,x,indent+INDENT_SHIFT);
             ast_to_string(buffer,y,indent+INDENT_SHIFT);
+        },
+        NodeKind::Block(a) => {
+            let _ = write!(buffer,"Block\n");
+            for x in a.iter() {
+                ast_to_string(buffer,x,indent+INDENT_SHIFT);
+            }
         }
     }
 }
@@ -488,7 +498,30 @@ fn expression(&mut self, i: &TokenIterator)
     return self.addition(i);
 }
 
+fn block(&mut self, i: &TokenIterator, t0: &Token)
+-> Result<Rc<AST>,SyntaxError>
+{
+    let mut buffer: Vec<Rc<AST>> = Vec::new();
+    loop{
+        let x = self.expression(i)?;
+        buffer.push(x);
+        let t = i.get();
+        if t.symbol == Symbol::Semicolon {
+            i.advance();
+        }else if t.symbol == Symbol::RightBrace {
+            i.advance();
+            break;
+        }else{
+            return Err(syntax_error(t.line,t.col,
+                "expected ';' or '}'".into()));
+        }
+    }
+    return Ok(AST::node(t0.line,t0.col,
+        NodeKind::Block(buffer.into_boxed_slice())
+    ));
 }
+
+} // impl Parser
 
 pub fn parse(s: &str) -> Result<Rc<AST>,SyntaxError> {
     let v = scan(s)?;
